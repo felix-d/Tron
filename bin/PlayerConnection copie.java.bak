@@ -1,0 +1,91 @@
+import java.awt.event.ActionListener;
+import java.io.BufferedReader;
+import java.net.*;
+import java.io.BufferedWriter;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
+import java.net.Socket;
+import java.util.Timer;
+import java.util.TimerTask;
+
+
+class PlayerConnection extends Thread {
+
+	Socket clientSocket;
+	PrintWriter output;
+	BufferedReader input;
+	private TronServer tronServer;
+	int numClient;
+	String username;
+	char direction;
+	int[]pos;
+	int posX;
+	int posY;
+	//int RGB;
+	boolean alive;
+	TronPlayer tronPlayer;
+
+	public PlayerConnection(Socket s, TronServer tronServer) {
+		// TODO Auto-generated constructor stub
+		tronPlayer = new TronPlayer(tronServer.setInitialPosition(),tronServer.setColor(),tronServer.setInitialDirection());
+		this.clientSocket = s;
+		this.tronServer = tronServer;
+		RGB = tronServer.setColor();
+		pos = tronServer.setInitialPosition();
+		direction = tronServer.setInitialDirection();
+		
+		posX = pos[0];
+		posY = pos[1];
+		alive = true;
+		try {
+			output = new PrintWriter(s.getOutputStream());
+			input = new BufferedReader(new InputStreamReader(s.getInputStream()));
+			numClient = tronServer.addClient(this)+1;
+		} catch (IOException e) {e.printStackTrace();}
+	}
+
+	//THREAD RUN();
+	public void run() {
+		try {
+		String ligneDuClient="";
+		System.out.println("Un nouveau client s'est connecte, no "+numClient);
+		tronServer.sendSize(output);
+		
+			username = input.readLine();
+			System.out.println("New User: "+username);
+			tronServer.sendUserToAll(this);
+			tronServer.sendAllUsersToTarget(this);
+			
+			while((ligneDuClient=input.readLine())!=null)
+			{
+				if(direction !='X')direction = ligneDuClient.charAt(0);
+				else tronServer.debutPartie=false;
+			}
+		} catch (IOException e) 
+		{
+			e.printStackTrace();
+			}
+		finally // finally se produira le plus souvent lors de la deconnexion du client
+		{
+			try
+		      {
+		      	// on indique a la console la deconnexion du client
+		        System.out.println("Le client no "+numClient+" s'est deconnecte");
+		        tronServer.delClient(numClient-1); // on supprime le client de la liste
+		        clientSocket.close(); // fermeture du socket si il ne l'a pas deja ete (a cause de l'exception levee plus haut)
+		      }
+		      catch (IOException e){ }
+		    }
+		 
+	}
+
+	public void kill() {
+		// TODO Auto-generated method stub
+		System.out.println("DEAD");
+		alive = false;
+		direction = 'X';
+	}
+	
+}
